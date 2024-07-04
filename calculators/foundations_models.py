@@ -138,6 +138,7 @@ def mace_off(
     device: str = "",
     default_dtype: str = "float64",
     return_raw_model: bool = False,
+    mode: str = "",
     **kwargs,
 ) -> MACECalculator:
     """
@@ -203,9 +204,16 @@ def mace_off(
         print(
             "Using float32 for MACECalculator, which is faster but less accurate. Recommended for MD. Use float64 for geometry optimization."
         )
-    mace_calc = MACECalculator(
-        model_paths=model, device=device, default_dtype=default_dtype, **kwargs
-    )
+    
+    if mode == 'dp':
+        mace_calc = DataParallelMACECalculator(
+            model_paths=model, device=device, default_dtype=default_dtype, **kwargs
+        )
+        print("Using DataParallelMACECalculator for MACECalculator")
+    else:
+        mace_calc = MACECalculator(
+            model_paths=model, device=device, default_dtype=default_dtype, **kwargs
+        )
     return mace_calc
 
 

@@ -19,6 +19,7 @@ from mace.modules.utils import extract_invariant
 from mace.tools import torch_geometric, torch_tools, utils
 from mace.tools.compile import prepare
 from mace.tools.scripts_utils import extract_load
+from mace.calculators.utils import DPMACE, GraphDataParallel
 from pprint import pprint
 
 
@@ -378,6 +379,8 @@ class DataParallelMACECalculator(Calculator):
     ):
         Calculator.__init__(self, **kwargs)
         self.results = {}
+        self.dp = GraphDataParallel()
+        self.dpmodel = DPMACE(self.dp)
 
         self.model_type = model_type
 
@@ -558,7 +561,8 @@ class DataParallelMACECalculator(Calculator):
         )
         for i, model in enumerate(self.models):
             batch = self._clone_batch(batch_base)
-            out = model(
+            out = self.dpmodel(
+                model,
                 batch.to_dict(),
                 compute_stress=compute_stress,
                 training=self.use_compile,
