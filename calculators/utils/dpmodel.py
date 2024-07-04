@@ -21,6 +21,7 @@ class DPMACE(torch.nn.Module):
         compute_displacement: bool = False,
         compute_hessian: bool = False,
     ) -> Dict[str, Optional[torch.Tensor]]:
+        
         # setup
         data["positions"].requires_grad = True
         data["node_attrs"].reauires_grad = True
@@ -62,10 +63,11 @@ class DPMACE(torch.nn.Module):
             lengths, data['node_attrs'], data['edge_index'], model.atomic_numbers
         )
         pair_node_energy = torch.zeros_like(node_e0)
-        
+
         # Interaction 
         node_es_list = [pair_node_energy]
         node_feats_list = []
+
         for interaction, product, readout in zip(
             model.interactions, model.products, model.readouts
         ):
@@ -76,6 +78,7 @@ class DPMACE(torch.nn.Module):
                 edge_feats=edge_feats,
                 edge_index=data["edge_index"],
             )
+
             node_feats = product(
                 node_feats=node_feats, sc=sc, node_attrs=data["node_attrs"]
             )
