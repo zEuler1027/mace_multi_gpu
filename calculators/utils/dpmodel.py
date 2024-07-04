@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from pprint import pprint
 from mace.calculators.utils.mace_utils import get_symmetric_displacement, get_edge_vectors_and_lengths, get_outputs
 from mace.tools.scatter import scatter_sum
-
+from torch.nn.parallel.replicate import replicate
 
 class DPMACE(torch.nn.Module):
     def __init__(self, dp: torch.nn.Module):
@@ -68,6 +68,10 @@ class DPMACE(torch.nn.Module):
         node_es_list = [pair_node_energy]
         node_feats_list = []
 
+        # graph data parallel
+        num_gpus = self.dp.num_gpus
+        interactions = replicate(model.interactions, devices=self.dp.devices)
+        pprint(interactions)
         for interaction, product, readout in zip(
             model.interactions, model.products, model.readouts
         ):

@@ -11,11 +11,10 @@ class GraphDataParallel(torch.nn.Module):
         super(GraphDataParallel, self).__init__()
         self.num_gpus = torch.cuda.device_count()
         if self.num_gpus < 2:
-            pass
-            # raise RuntimeError('No GPUs found, please use MACECalculator instead.')
+            raise RuntimeError('No distributed GPUs found, please use MACECalculator instead.')
         devices = [torch.device(f'cuda:{i}') for i in range(self.num_gpus)]
         print('Using devices:', devices)
-        self.num_gpus = 3
+        # self.num_gpus = 3
         
     def forward(self, x):
         raise NotImplementedError
@@ -33,7 +32,6 @@ class GraphDataParallel(torch.nn.Module):
                 [node_idx, torch.ones(num_nodes - node_idx.size(0), dtype=torch.long) * self.num_gpus - 1]
             )
         return nodes_mask
-    
     
     def get_scatter_edges_index(self, edge_index):
         edges_mask = self.get_scatter_edges_mask(edge_index)
@@ -60,9 +58,6 @@ class GraphDataParallel(torch.nn.Module):
     
     def replicate(self, x, devices):
         return replicate(x, devices)
-    
-    def partition(self, nodes_features, edge_features, edge_index, devices):
-        raise NotImplementedError
     
     def parallel_apply(self, replicas, devices):
         raise NotImplementedError
