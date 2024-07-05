@@ -1,9 +1,14 @@
 import torch
 from typing import Dict, Optional
 from pprint import pprint
-from mace.calculators.utils.mace_utils import get_symmetric_displacement, get_edge_vectors_and_lengths, get_outputs
+from mace.calculators.utils.mace_utils import (
+    get_symmetric_displacement, 
+    get_edge_vectors_and_lengths, 
+    get_outputs, 
+    MACEModule
+)
 from mace.tools.scatter import scatter_sum
-from torch.nn.parallel.replicate import replicate
+
 
 class DPMACE(torch.nn.Module):
     def __init__(self, dp: torch.nn.Module):
@@ -68,10 +73,55 @@ class DPMACE(torch.nn.Module):
         node_es_list = [pair_node_energy]
         node_feats_list = []
 
-        # graph data parallel
-        num_gpus = self.dp.num_gpus
-        interactions = replicate(model.interactions, devices=self.dp.devices)
+        # -----------------------------------–––---------------------------------------------
+        # graph data parallel by songze, repicate the module
+        interactions = [
+            self.dp.replicate(MACEModule(model.interactions[i]), devices=self.dp.devices) 
+            for i in range(len(model.interactions))
+        ]
         pprint(interactions)
+        products = [
+            self.dp.replicate(MACEModule(model.products[i]), devices=self.dp.devices) 
+            for i in  range(len(model.products))
+        ]
+        readouts = [
+            self.dp.replicate(model.readouts[i], devices=self.dp.devices)
+            for i in range(len(model.readouts))
+        ]
+        
+        node_attrs = self.dp.broadcast(data["node_attrs"])
+        node_feats = self.dp.broadcast(node_feats)
+        edges_mask = self.dp.get_scatter_edges_mask(data['edge_index'])
+        edge_attrs = self.dp.scatter_edges_feats(edge_attrs, edges_mask)
+        edge_feats = self.dp.scatter_edges_feats(edge_feats, edges_mask)
+        data['edge_index'] = self.dp.get_scatter_edges_index(data['edge_index'])
+        
+        
+        for interaction, product, readout in zip(
+            interactions, products, readouts
+        ):
+            inputs = [
+                {
+                'node_attrs': node_attrs[i],
+                'node_feats': node_feats[i],
+                'edge_attrs': edge_attrs[i],
+                'edge_feats': edge_feats[i],
+                'edge_index': data['edge_index'][i]
+                }
+                for i in range(self.dp.num_gpus)
+            ]
+            
+            outputs = self.dp.parallel_apply(interaction, inputs)
+            
+            node_feats = self.dp.reduce(outputs[0], self.dp.devices[0])
+            sc = self.dp.reduce(outputs[1], self.dp.devices[0])
+            
+            node_feats = self.scatter_nodes_feats(node_feats, self.dp.devices)
+            
+
+        
+        # -----------------------------------–––---------------------------------------------
+        '''
         for interaction, product, readout in zip(
             model.interactions, model.products, model.readouts
         ):
@@ -88,9 +138,9 @@ class DPMACE(torch.nn.Module):
             )
             node_feats_list.append(node_feats)
             node_es_list.append(readout(node_feats).squeeze(-1))  # {[n_nodes, ], }
+        '''
         # concat
         node_feats_out = torch.cat(node_feats_list, dim=-1)
-        
         # sum over interactions
         node_inter_es = torch.sum(
             torch.stack(node_es_list, dim=0), dim=0
@@ -127,7 +177,7 @@ class DPMACE(torch.nn.Module):
             "displacement": displacement,
             "node_feats": node_feats_out,
         }
-        
+        self.dp.check_memory()
         return output
     
     

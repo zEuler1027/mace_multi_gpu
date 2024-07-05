@@ -1,5 +1,5 @@
 import torch
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Dict
 
 
 def get_symmetric_displacement(
@@ -211,3 +211,12 @@ def compute_forces_virials(
         virials = torch.zeros((1, 3, 3))
 
     return -1 * forces, -1 * virials, stress
+
+
+class MACEModule(torch.nn.Module):
+    def __init__(self, model: torch.nn.Module):
+        super(MACEModule, self).__init__()
+        self.model = model
+    
+    def forward(self, x: Dict[str: torch.Tensor]):
+        self.model(**x)

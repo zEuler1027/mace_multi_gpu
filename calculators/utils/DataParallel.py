@@ -1,6 +1,7 @@
 import torch
 from torch.nn.parallel.scatter_gather import scatter, gather
 from torch.nn.parallel.replicate import replicate
+from torch import nn
 import numpy as np
 from metispy import metis
 import networkx as nx
@@ -12,8 +13,8 @@ class GraphDataParallel(torch.nn.Module):
         self.num_gpus = torch.cuda.device_count()
         if self.num_gpus < 2:
             raise RuntimeError('No distributed GPUs found, please use MACECalculator instead.')
-        devices = [torch.device(f'cuda:{i}') for i in range(self.num_gpus)]
-        print('Using devices:', devices)
+        self.devices = [torch.device(f'cuda:{i}') for i in range(self.num_gpus)]
+        print('Using devices:', self.devices)
         # self.num_gpus = 3
         
     def forward(self, x):
@@ -33,8 +34,7 @@ class GraphDataParallel(torch.nn.Module):
             )
         return nodes_mask
     
-    def get_scatter_edges_index(self, edge_index):
-        edges_mask = self.get_scatter_edges_mask(edge_index)
+    def get_scatter_edges_index(self, edge_index, edges_mask):
         return [edge_index[:, edges_mask[i]] for i in range(self.num_gpus)]
         
     def get_scatter_edges_mask(self, edge_index):
@@ -50,14 +50,28 @@ class GraphDataParallel(torch.nn.Module):
         _, parts = metis.part_graph(G, self.num_gpus)
         return parts
         
-    def scatter(self, x, devices):
+    def scatter_nodes_feats(self, x, devices):
         return scatter(x, devices)
     
-    def gather(self, x, device):
+    def scatter_edges_feats(self, x, mask):
+        return [x[idx].to(self.devices[i]) for i, idx in enumerate(mask)]
+    
+    def gather_nodes_feats(self, x, device):
+        return gather(x, device)
+    
+    def gather_edges_feats(self, x, edge_index, device):
         return gather(x, device)
     
     def replicate(self, x, devices):
         return replicate(x, devices)
     
     def parallel_apply(self, replicas, devices):
-        raise NotImplementedError
+        raise nn.parallel.parallel_apply(replicas, devices)
+    
+    def broadcast(self, x):
+        return [x.to(device) for device in self.devices]
+    
+    def reduce(self, x, device):
+        x_all = [x_.to(device) for x_ in x]
+        output = sum(x_all)
+        return output
