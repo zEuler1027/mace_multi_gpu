@@ -66,7 +66,7 @@ class GraphDataParallel(torch.nn.Module):
         return replicate(x, devices)
     
     def parallel_apply(self, replicas, devices):
-        raise nn.parallel.parallel_apply(replicas, devices)
+        return nn.parallel.parallel_apply(replicas, devices)
     
     def broadcast(self, x):
         return [x.to(device) for device in self.devices]

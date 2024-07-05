@@ -114,7 +114,7 @@ class DPMACE(torch.nn.Module):
                 }
                 for i in range(self.dp.num_gpus)
             ]
-
+            '''
             sender = inputs[1]['edge_index'][0]
             receiver = inputs[1]['edge_index'][1]
             num_nodes = inputs[1]['node_feats'].shape[0]
@@ -132,23 +132,25 @@ class DPMACE(torch.nn.Module):
             print('message1', message)
             message = interaction[1].model.skip_tp(message, inputs[1]['node_attrs'])
             print('message2', message)
-            
-            
-            
-            
+            print(interaction[1].model.reshape(message))
+            print(interaction[1].model(**inputs[1]))
+            print(interaction[0](inputs[0]))
+            '''
             outputs = self.dp.parallel_apply(interaction, inputs)
+            self.dp.check_memory()
             node_feats = self.dp.reduce(
                 [outputs[i][0] for i in range(self.dp.num_gpus)], 
                 self.dp.devices[0]
             )
-            
+            print('node_feats:', node_feats)
             if outputs[0][1] is None:
                 sc = [outputs[0][1], ] * self.dp.num_gpus
             else:
                 sc = self.dp.scatter_nodes_feats(outputs[0][1], self.dp.devices)
             
-            node_feats = self.scatter_nodes_feats(node_feats, self.dp.devices)
+            node_feats = self.dp.scatter_nodes_feats(node_feats, self.dp.devices)
             node_attrs_scatter = self.dp.scatter_nodes_feats(node_attrs, self.dp.devices)
+            
             inputs = [
                 {
                     'node_feats': node_feats[i],
@@ -157,10 +159,11 @@ class DPMACE(torch.nn.Module):
                 }
                 for i in range(self.dp.num_gpus)
             ]
+            print(product)
             outputs = self.dp.parallel_apply(product, inputs)
-            node_feats = self.gather_nodes_feats(outputs, self.dp.devices[0])
-            node_out = self.gather_nodes_feats(
-                self.parallel_apply(readout, outputs)
+            node_feats = self.dp.gather_nodes_feats(outputs, self.dp.devices[0])
+            node_out = self.dp.gather_nodes_feats(
+                self.dp.parallel_apply(readout, outputs), self.dp.devices[0]
             )
             node_feats_list.append(node_out.squeeze(-1))
         # -----------------------------------–––---------------------------------------------
@@ -182,6 +185,7 @@ class DPMACE(torch.nn.Module):
             node_feats_list.append(node_feats)
             node_es_list.append(readout(node_feats).squeeze(-1))  # {[n_nodes, ], }
         '''
+        self.dp.check_memory()
         # concat
         node_feats_out = torch.cat(node_feats_list, dim=-1)
         # sum over interactions

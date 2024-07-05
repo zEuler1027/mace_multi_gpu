@@ -219,4 +219,4 @@ class MACEModule(torch.nn.Module):
         self.model = model
     
     def forward(self, x: Dict[str, torch.Tensor]):
-        self.model(**x)
+        return self.model(**x)
