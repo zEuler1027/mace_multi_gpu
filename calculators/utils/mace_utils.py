@@ -218,5 +218,5 @@ class MACEModule(torch.nn.Module):
         super(MACEModule, self).__init__()
         self.model = model
     
-    def forward(self, x: Dict[str: torch.Tensor]):
+    def forward(self, x: Dict[str, torch.Tensor]):
         self.model(**x)

@@ -79,27 +79,31 @@ class DPMACE(torch.nn.Module):
             self.dp.replicate(MACEModule(model.interactions[i]), devices=self.dp.devices) 
             for i in range(len(model.interactions))
         ]
-        pprint(interactions)
+
         products = [
             self.dp.replicate(MACEModule(model.products[i]), devices=self.dp.devices) 
             for i in  range(len(model.products))
         ]
+        
         readouts = [
             self.dp.replicate(model.readouts[i], devices=self.dp.devices)
             for i in range(len(model.readouts))
         ]
         
+        # broadcast node_attrs
         node_attrs = self.dp.broadcast(data["node_attrs"])
-        node_feats = self.dp.broadcast(node_feats)
+        
+        # scatter edge_attrs and edge_feats (define by metis graph partition)
         edges_mask = self.dp.get_scatter_edges_mask(data['edge_index'])
         edge_attrs = self.dp.scatter_edges_feats(edge_attrs, edges_mask)
         edge_feats = self.dp.scatter_edges_feats(edge_feats, edges_mask)
-        data['edge_index'] = self.dp.get_scatter_edges_index(data['edge_index'])
+        data['edge_index'] = self.dp.get_scatter_edges_index(data['edge_index'], edges_mask)
         
         
         for interaction, product, readout in zip(
             interactions, products, readouts
         ):
+            node_feats = self.dp.broadcast(node_feats)
             inputs = [
                 {
                 'node_attrs': node_attrs[i],
@@ -110,16 +114,55 @@ class DPMACE(torch.nn.Module):
                 }
                 for i in range(self.dp.num_gpus)
             ]
+
+            sender = inputs[1]['edge_index'][0]
+            receiver = inputs[1]['edge_index'][1]
+            num_nodes = inputs[1]['node_feats'].shape[0]
+            node_feats = interaction[1].model.linear_up(inputs[1]['node_feats'])
+            tp_weights = interaction[1].model.conv_tp_weights(inputs[1]['edge_feats'])
+            mji = interaction[1].model.conv_tp(
+                inputs[1]['node_feats'][sender], inputs[1]['edge_attrs'], tp_weights
+            )
+            print('mji:', mji)
+            message = scatter_sum(
+                src=mji, index=receiver, dim=0, dim_size=num_nodes
+            )
+            print('message', message)
+            message = interaction[1].model.linear(message) / interaction[1].model.avg_num_neighbors
+            print('message1', message)
+            message = interaction[1].model.skip_tp(message, inputs[1]['node_attrs'])
+            print('message2', message)
+            
+            
+            
             
             outputs = self.dp.parallel_apply(interaction, inputs)
+            node_feats = self.dp.reduce(
+                [outputs[i][0] for i in range(self.dp.num_gpus)], 
+                self.dp.devices[0]
+            )
             
-            node_feats = self.dp.reduce(outputs[0], self.dp.devices[0])
-            sc = self.dp.reduce(outputs[1], self.dp.devices[0])
+            if outputs[0][1] is None:
+                sc = [outputs[0][1], ] * self.dp.num_gpus
+            else:
+                sc = self.dp.scatter_nodes_feats(outputs[0][1], self.dp.devices)
             
             node_feats = self.scatter_nodes_feats(node_feats, self.dp.devices)
-            
-
-        
+            node_attrs_scatter = self.dp.scatter_nodes_feats(node_attrs, self.dp.devices)
+            inputs = [
+                {
+                    'node_feats': node_feats[i],
+                    'sc': sc[i],
+                    'node_attrs': node_attrs_scatter[i]
+                }
+                for i in range(self.dp.num_gpus)
+            ]
+            outputs = self.dp.parallel_apply(product, inputs)
+            node_feats = self.gather_nodes_feats(outputs, self.dp.devices[0])
+            node_out = self.gather_nodes_feats(
+                self.parallel_apply(readout, outputs)
+            )
+            node_feats_list.append(node_out.squeeze(-1))
         # -----------------------------------–––---------------------------------------------
         '''
         for interaction, product, readout in zip(

@@ -35,11 +35,11 @@ class GraphDataParallel(torch.nn.Module):
         return nodes_mask
     
     def get_scatter_edges_index(self, edge_index, edges_mask):
-        return [edge_index[:, edges_mask[i]] for i in range(self.num_gpus)]
+        return [edge_index[:, edges_mask[i]].to(self.devices[i]) for i in range(self.num_gpus)]
         
     def get_scatter_edges_mask(self, edge_index):
         parts = self.get_metis_partition(edge_index)
-        node_mask = torch.tensor(parts, dtype=torch.long)
+        node_mask = torch.tensor(parts, dtype=torch.long, device=edge_index.device)
         edges_mask = [node_mask[edge_index[1]] == i for i in range(self.num_gpus)]
         return edges_mask
     
