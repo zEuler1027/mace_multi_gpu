@@ -667,3 +667,4 @@ class DataParallelMACECalculator(Calculator):
         if self.num_models == 1:
             return descriptors[0]
         return descriptors
+

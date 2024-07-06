@@ -43,7 +43,7 @@ class DPMACE(torch.nn.Module):
                 displacement,
             ) = get_symmetric_displacement(
                 positions=data['positions'],
-                unit_shifts=data['shifts'],
+                unit_shifts=data['unit_shifts'],
                 cell=data["cell"],
                 edge_index=data['edge_index'],
                 num_graphs=num_graphs,
