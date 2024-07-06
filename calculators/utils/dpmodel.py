@@ -223,7 +223,7 @@ class DPMACE(torch.nn.Module):
             "displacement": displacement,
             "node_feats": node_feats_out,
         }
-        self.dp.check_memory()
+
         return output
     
     
