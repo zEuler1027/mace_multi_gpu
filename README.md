@@ -1,10 +1,19 @@
-# mace_multi_gpu
+# Mace_Multi_GPU
 
 An implementation of the multi-GPU version for Mace.
 
 - MACE - Fast and accurate machine learning interatomic potentials with higher order equivariant message passing.
 
 ## Table of contents
+
+- [Mace\_Multi\_GPU](#mace_multi_gpu)
+  - [Table of contents](#table-of-contents)
+  - [Installation](#installation)
+    - [MACE installation from source](#mace-installation-from-source)
+    - [Metis installation](#metis-installation)
+  - [Usage of Pretrained Foundation Models](#usage-of-pretrained-foundation-models)
+    - [MACE-MP: Materials Project Force Fields](#mace-mp-materials-project-force-fields)
+    - [MACE-OFF: Transferable Organic Force Fields](#mace-off-transferable-organic-force-fields)
 
 ## Installation
 
