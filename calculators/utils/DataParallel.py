@@ -22,7 +22,7 @@ class GraphDataParallel(torch.nn.Module):
     
     def check_memory(self):
         for i in range(self.num_gpus):
-            print(f'GPU {i} memory:', torch.cuda.memory_allocated(i) / 1024 ** 3, 'GB')
+            print(f'GPU {i} memory:', torch.cuda.max_memory_allocated(i) / 1024 ** 3, 'GB')
     
     def get_scatter_nodes_mask(self, num_nodes):
         # Get the number of nodes per GPU

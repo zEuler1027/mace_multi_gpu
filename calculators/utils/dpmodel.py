@@ -26,10 +26,10 @@ class DPMACE(torch.nn.Module):
         compute_displacement: bool = False,
         compute_hessian: bool = False,
     ) -> Dict[str, Optional[torch.Tensor]]:
-        
+
         # setup
-        data["positions"].requires_grad = True
-        data["node_attrs"].reauires_grad = True
+        data["positions"].requires_grad_(True)
+        data["node_attrs"].requires_grad_(True)
         num_graphs = data["ptr"].numel() - 1
         displacement = torch.zeros(
             (num_graphs, 3, 3),
@@ -137,19 +137,17 @@ class DPMACE(torch.nn.Module):
             print(interaction[0](inputs[0]))
             '''
             outputs = self.dp.parallel_apply(interaction, inputs)
-            self.dp.check_memory()
             node_feats = self.dp.reduce(
                 [outputs[i][0] for i in range(self.dp.num_gpus)], 
                 self.dp.devices[0]
             )
-            print('node_feats:', node_feats)
             if outputs[0][1] is None:
                 sc = [outputs[0][1], ] * self.dp.num_gpus
             else:
                 sc = self.dp.scatter_nodes_feats(outputs[0][1], self.dp.devices)
             
             node_feats = self.dp.scatter_nodes_feats(node_feats, self.dp.devices)
-            node_attrs_scatter = self.dp.scatter_nodes_feats(node_attrs, self.dp.devices)
+            node_attrs_scatter = self.dp.scatter_nodes_feats(node_attrs[0], self.dp.devices)
             
             inputs = [
                 {
@@ -159,13 +157,14 @@ class DPMACE(torch.nn.Module):
                 }
                 for i in range(self.dp.num_gpus)
             ]
-            print(product)
+
             outputs = self.dp.parallel_apply(product, inputs)
             node_feats = self.dp.gather_nodes_feats(outputs, self.dp.devices[0])
             node_out = self.dp.gather_nodes_feats(
                 self.dp.parallel_apply(readout, outputs), self.dp.devices[0]
             )
-            node_feats_list.append(node_out.squeeze(-1))
+            node_feats_list.append(node_feats)
+            node_es_list.append(node_out.squeeze(-1))
         # -----------------------------------–––---------------------------------------------
         '''
         for interaction, product, readout in zip(
@@ -185,9 +184,10 @@ class DPMACE(torch.nn.Module):
             node_feats_list.append(node_feats)
             node_es_list.append(readout(node_feats).squeeze(-1))  # {[n_nodes, ], }
         '''
-        self.dp.check_memory()
+        
         # concat
         node_feats_out = torch.cat(node_feats_list, dim=-1)
+        
         # sum over interactions
         node_inter_es = torch.sum(
             torch.stack(node_es_list, dim=0), dim=0
@@ -202,7 +202,8 @@ class DPMACE(torch.nn.Module):
         # add E_0 and (scaled) interaction energy
         totol_energy = e0 + inter_e
         node_energy = node_e0 + node_inter_es
-        forces, virials, stress, hessian = get_outputs(
+
+        forces, virials, stress, _ = get_outputs(
             energy=inter_e,
             positions=data["positions"],
             displacement=displacement,
@@ -211,7 +212,6 @@ class DPMACE(torch.nn.Module):
             compute_force=compute_force,
             compute_virials=compute_virials,
             compute_stress=compute_stress,
-            compute_hessian=compute_hessian,
         )
         output = {
             "energy": totol_energy,
@@ -220,7 +220,6 @@ class DPMACE(torch.nn.Module):
             "forces": forces,
             "virials": virials,
             "stress": stress,
-            "hessian": hessian,
             "displacement": displacement,
             "node_feats": node_feats_out,
         }

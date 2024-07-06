@@ -248,6 +248,7 @@ class MACECalculator(Calculator):
                 compute_stress=compute_stress,
                 training=self.use_compile,
             )
+            print('cuda memory:', torch.cuda.max_memory_allocated()/1024/1024/1024)
             if self.model_type in ["MACE", "EnergyDipoleMACE"]:
                 ret_tensors["energies"][i] = out["energy"].detach()
                 ret_tensors["node_energy"][i] = (out["node_energy"] - node_e0).detach()
