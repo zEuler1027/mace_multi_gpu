@@ -1,12 +1,12 @@
-# Mace_Multi_GPU
+# MACE_Multi_GPU
 
-An implementation of the multi-GPU version for Mace.
+An implementation of the multi-GPU version for MACE.
 
 - MACE - Fast and accurate machine learning interatomic potentials with higher order equivariant message passing.
 
 ## Table of contents
 
-- [Mace\_Multi\_GPU](#mace_multi_gpu)
+- [MACE\_Multi\_GPU](#mace_multi_gpu)
   - [Table of contents](#table-of-contents)
   - [Installation](#installation)
     - [MACE installation from source](#mace-installation-from-source)
