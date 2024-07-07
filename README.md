@@ -9,7 +9,7 @@ An implementation of the multi-GPU version for MACE.
 - [MACE\_Multi\_GPU](#mace_multi_gpu)
   - [Table of contents](#table-of-contents)
   - [Installation](#installation)
-    - [MACE installation from source](#mace-installation-from-source)
+    - [MACE installation from source](#mace-installation-from-source(multi_gpu-version))
     - [Metis installation](#metis-installation)
   - [Usage of Pretrained Foundation Models](#usage-of-pretrained-foundation-models)
     - [MACE-MP: Materials Project Force Fields](#mace-mp-materials-project-force-fields)
@@ -17,7 +17,7 @@ An implementation of the multi-GPU version for MACE.
 
 ## Installation
 
-### MACE installation from source
+### MACE installation from source(multi_gpu version)
 
 - conda
 
