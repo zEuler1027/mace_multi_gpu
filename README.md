@@ -34,7 +34,7 @@ conda install numpy scipy matplotlib ase opt_einsum prettytable pandas e3nn
 
 # Clone and install multi-GPU version of MACE (and all required packages)
 git clone git@github.com:zEuler1027/mace_multi_gpu.git
-pip install ./mace
+pip install .
 ```
 
 - pip
@@ -48,7 +48,7 @@ pip3 install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url http
 
 # Clone and install MACE (and all required packages)
 git clone git@github.com:zEuler1027/mace_multi_gpu.git
-pip install ./mace
+pip install .
 ```
 
 ### Metis installation
