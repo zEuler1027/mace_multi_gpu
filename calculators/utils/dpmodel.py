@@ -26,7 +26,8 @@ class DPMACE(torch.nn.Module):
         compute_displacement: bool = False,
         compute_hessian: bool = False,
     ) -> Dict[str, Optional[torch.Tensor]]:
-
+        # clear cache
+        torch.cuda.empty_cache()
         # setup
         data["positions"].requires_grad_(True)
         data["node_attrs"].requires_grad_(True)

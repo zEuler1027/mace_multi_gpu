@@ -14,7 +14,6 @@ local_model_path = os.path.join(
     module_dir, "foundations_models/2023-12-03-mace-mp.model"
 )
 
-
 def mace_mp(
     model: Union[str, Path] = None,
     device: str = "",
@@ -23,6 +22,7 @@ def mace_mp(
     damping: Literal["zero", "bj", "zerom", "bjm"] = "bj",
     dispersion_xc: str = "pbe",
     dispersion_cutoff: float = 40.0 * units.Bohr,
+    mode: str = "",
     **kwargs,
 ) -> MACECalculator:
     """
@@ -105,9 +105,15 @@ def mace_mp(
         print(
             "Using float32 for MACECalculator, which is faster but less accurate. Recommended for MD. Use float64 for geometry optimization."
         )
-    mace_calc = MACECalculator(
-        model_paths=model, device=device, default_dtype=default_dtype, **kwargs
-    )
+    if mode == 'dp':
+        mace_calc = DataParallelMACECalculator(
+            model_paths=model, device=device, default_dtype=default_dtype, **kwargs
+        )
+        print("Using DataParallelMACECalculator for MACECalculator")
+    else:
+        mace_calc = MACECalculator(
+            model_paths=model, device=device, default_dtype=default_dtype, **kwargs
+        )
     d3_calc = None
     if dispersion:
         gh_url = "https://github.com/pfnet-research/torch-dftd"
@@ -115,7 +121,7 @@ def mace_mp(
             from torch_dftd.torch_dftd3_calculator import TorchDFTD3Calculator
         except ImportError as exc:
             raise RuntimeError(
-                f"Please install torch-dftd to use dispersion corrections (see {gh_url} from {exc})"
+                f"Please install torch-dftd to use dispersion corrections (see {gh_url} frhtoom {exc})"
             ) from exc
         print(
             f"Using TorchDFTD3Calculator for D3 dispersion corrections (see {gh_url})"

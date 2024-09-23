@@ -8,6 +8,7 @@
 from glob import glob
 from pathlib import Path
 from typing import Union
+import os
 
 import numpy as np
 import torch
@@ -379,6 +380,7 @@ class DataParallelMACECalculator(Calculator):
         **kwargs,
     ):
         Calculator.__init__(self, **kwargs)
+        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128" # prevent OOM
         self.results = {}
         self.dp = GraphDataParallel()
         self.dpmodel = DPMACE(self.dp)
@@ -667,4 +669,3 @@ class DataParallelMACECalculator(Calculator):
         if self.num_models == 1:
             return descriptors[0]
         return descriptors
-
