@@ -84,7 +84,28 @@ import metispy as metis # check metispy
 
 ### MACE-MP: Materials Project Force Fields
 
-NotImplimented.
+- MACECalculator
+
+```python
+from mace.calculators import mace_mp
+from ase import build
+
+atoms = build.molecule('CH3CH2OH')
+calc = mace_mp(model="medium", device='cuda')
+atoms.calc = calc
+print(atoms.get_potential_energy())
+```
+- MACEDataParallelCalculator
+
+```python
+from mace.calculators import mace_mp
+from ase import build
+
+atoms = build.molecule('CH3CH2OH')
+calc = mace_mp(model="medium", mode='dp')
+atoms.calc = calc
+print(atoms.get_potential_energy())
+```
 
 ### MACE-OFF: Transferable Organic Force Fields
 
@@ -98,7 +119,6 @@ atoms = build.molecule('CH3CH2OH')
 calc = mace_off(model="medium", device='cuda')
 atoms.calc = calc
 print(atoms.get_potential_energy())
-print(atoms.get_potential_energy())
 ```
 - MACEDataParallelCalculator
 
@@ -109,6 +129,5 @@ from ase import build
 atoms = build.molecule('CH3CH2OH')
 calc = mace_off(model="medium", mode='dp')
 atoms.calc = calc
-print(atoms.get_potential_energy())
 print(atoms.get_potential_energy())
 ```
