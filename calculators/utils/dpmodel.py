@@ -11,13 +11,28 @@ from mace.tools.scatter import scatter_sum
 
 
 class DPMACE(torch.nn.Module):
-    def __init__(self, dp: torch.nn.Module):
+    def __init__(self, model, dp: torch.nn.Module):
         super(DPMACE, self).__init__()
+        self.model = model
         self.dp = dp
+        # graph data parallel, repicate the module
+        self.interactions = [
+            self.dp.replicate(MACEModule(model.interactions[i]), devices=self.dp.devices) 
+            for i in range(len(model.interactions))
+        ]
+
+        self.products = [
+            self.dp.replicate(MACEModule(model.products[i]), devices=self.dp.devices) 
+            for i in  range(len(model.products))
+        ]
+        
+        self.readouts = [
+            self.dp.replicate(model.readouts[i], devices=self.dp.devices)
+            for i in range(len(model.readouts))
+        ]
         
     def forward(
         self,
-        model,
         data: Dict[str, torch.Tensor],
         training: bool = False,
         compute_force: bool = True,
@@ -52,21 +67,21 @@ class DPMACE(torch.nn.Module):
             )
             
         # Atomic energies
-        node_e0 = model.atomic_energies_fn(data["node_attrs"])
+        node_e0 = self.model.atomic_energies_fn(data["node_attrs"])
         e0 = scatter_sum(
             src=node_e0, index=data["batch"], dim=-1, dim_size=num_graphs
         ) # [n_graphs, ]
         
         # Embedding
-        node_feats = model.node_embedding(data["node_attrs"])
+        node_feats = self.model.node_embedding(data["node_attrs"])
         vectors, lengths = get_edge_vectors_and_lengths(
             positions=data["positions"],
             edge_index=data["edge_index"],
             shifts=data["shifts"],
         )
-        edge_attrs = model.spherical_harmonics(vectors)
-        edge_feats = model.radial_embedding(
-            lengths, data['node_attrs'], data['edge_index'], model.atomic_numbers
+        edge_attrs = self.model.spherical_harmonics(vectors)
+        edge_feats = self.model.radial_embedding(
+            lengths, data['node_attrs'], data['edge_index'], self.model.atomic_numbers
         )
         pair_node_energy = torch.zeros_like(node_e0)
 
@@ -75,23 +90,7 @@ class DPMACE(torch.nn.Module):
         node_feats_list = []
 
         # -----------------------------------–––---------------------------------------------
-        # graph data parallel by songze, repicate the module
-        interactions = [
-            self.dp.replicate(MACEModule(model.interactions[i]), devices=self.dp.devices) 
-            for i in range(len(model.interactions))
-        ]
-
-        products = [
-            self.dp.replicate(MACEModule(model.products[i]), devices=self.dp.devices) 
-            for i in  range(len(model.products))
-        ]
-        
-        readouts = [
-            self.dp.replicate(model.readouts[i], devices=self.dp.devices)
-            for i in range(len(model.readouts))
-        ]
-        
-        # broadcast node_attrs
+        # graph data parallel, broadcast node_attrs
         node_attrs = self.dp.broadcast(data["node_attrs"])
         
         # scatter edge_attrs and edge_feats (define by metis graph partition)
@@ -102,7 +101,7 @@ class DPMACE(torch.nn.Module):
         
         
         for interaction, product, readout in zip(
-            interactions, products, readouts
+            self.interactions, self.products, self.readouts
         ):
             node_feats = self.dp.broadcast(node_feats)
             inputs = [
@@ -193,7 +192,7 @@ class DPMACE(torch.nn.Module):
         node_inter_es = torch.sum(
             torch.stack(node_es_list, dim=0), dim=0
         )
-        node_inter_es = model.scale_shift(node_inter_es)
+        node_inter_es = self.model.scale_shift(node_inter_es)
         
         #sum over nodes in graph
         inter_e = scatter_sum(

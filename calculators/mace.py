@@ -382,8 +382,6 @@ class DataParallelMACECalculator(Calculator):
         Calculator.__init__(self, **kwargs)
         os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128" # prevent OOM
         self.results = {}
-        self.dp = GraphDataParallel()
-        self.dpmodel = DPMACE(self.dp)
 
         self.model_type = model_type
 
@@ -485,6 +483,9 @@ class DataParallelMACECalculator(Calculator):
         for model in self.models:
             for param in model.parameters():
                 param.requires_grad = False
+        # DataParallel
+        self.dp = GraphDataParallel()
+        self.dpmodel = DPMACE(self.models[0], self.dp)
 
     def _create_result_tensors(
         self, model_type: str, num_models: int, num_atoms: int
@@ -565,7 +566,6 @@ class DataParallelMACECalculator(Calculator):
         for i, model in enumerate(self.models):
             batch = self._clone_batch(batch_base)
             out = self.dpmodel(
-                model,
                 batch.to_dict(),
                 compute_stress=compute_stress,
                 training=self.use_compile,
