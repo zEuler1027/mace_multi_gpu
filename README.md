@@ -1,15 +1,15 @@
-# Mace_Multi_GPU
+# MACE_Multi_GPU
 
-An implementation of the multi-GPU version for Mace.
+An implementation of the multi-GPU version for MACE.
 
 - MACE - Fast and accurate machine learning interatomic potentials with higher order equivariant message passing.
 
 ## Table of contents
 
-- [Mace\_Multi\_GPU](#mace_multi_gpu)
+- [MACE\_Multi\_GPU](#mace_multi_gpu)
   - [Table of contents](#table-of-contents)
   - [Installation](#installation)
-    - [MACE installation from source](#mace-installation-from-source)
+    - [MACE installation from source](#mace-installation-from-source(multi_gpu-version))
     - [Metis installation](#metis-installation)
   - [Usage of Pretrained Foundation Models](#usage-of-pretrained-foundation-models)
     - [MACE-MP: Materials Project Force Fields](#mace-mp-materials-project-force-fields)
@@ -17,7 +17,7 @@ An implementation of the multi-GPU version for Mace.
 
 ## Installation
 
-### MACE installation from source
+### MACE installation from source(multi_gpu version)
 
 - conda
 
@@ -34,7 +34,7 @@ conda install numpy scipy matplotlib ase opt_einsum prettytable pandas e3nn
 
 # Clone and install multi-GPU version of MACE (and all required packages)
 git clone git@github.com:zEuler1027/mace_multi_gpu.git
-pip install ./mace
+pip install .
 ```
 
 - pip
@@ -48,7 +48,7 @@ pip3 install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url http
 
 # Clone and install MACE (and all required packages)
 git clone git@github.com:zEuler1027/mace_multi_gpu.git
-pip install ./mace
+pip install .
 ```
 
 ### Metis installation
